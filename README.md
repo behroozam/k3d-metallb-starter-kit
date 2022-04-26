@@ -14,8 +14,30 @@ Setup and Teardown a local Kubernetes Cluster with a Load Balancer, so that you 
 Create the Cluster and validate it's creation:
 
 ```bash
+#create config for k3d cluster
+
+cat <<EOF>> cluster1.yml
+---
+apiVersion: k3d.io/v1alpha3
+kind: Simple
+name: cluster-1
+kubeAPI:
+ hostIP: "127.0.0.1"
+ hostPort: "6445"
+
+options:
+ k3s: # options passed on to K3s itself
+   extraArgs: # additional arguments passed to the `k3s server|agent` command; same as `--k3s-arg`
+     - arg: --disable=traefik
+       nodeFilters:
+         - server:*
+     - arg: --disable=servicelb
+       nodeFilters:
+         - server:*
+
 # create the k3d cluster
-k3d cluster create local-k8s --servers 1 --agents 3 --k3s-arg "--disable=traefik@server:0" --wait
+k3d cluster create --config cluster1.yml
+
 
 # validate the cluster master and worker nodes
 kubectl get nodes
@@ -55,6 +77,11 @@ data:
       addresses:
       - $ingress_range
 EOF
+
+# install nginx-ingress
+
+helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace --set controller.ingressClassResource.default="true"
+
 done
 
 ```
